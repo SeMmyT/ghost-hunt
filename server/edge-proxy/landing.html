@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ghost Hunt</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #fff;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  #loading {
+    text-align: center;
+    animation: flicker 2s ease-in-out infinite;
+  }
+  #loading h1 {
+    font-size: clamp(2rem, 8vw, 4rem);
+    letter-spacing: 0.2em;
+    margin-bottom: 1rem;
+  }
+  #loading .room-code {
+    font-size: clamp(1.5rem, 6vw, 3rem);
+    letter-spacing: 0.3em;
+    color: #888;
+  }
+  #loading .status {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 2rem;
+  }
+  #loading .transport {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .transport.webtransport { color: #4f4; }
+  .transport.websocket { color: #ff4; }
+  #unity-canvas {
+    width: 100vw;
+    height: 100vh;
+    display: none;
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+  /* Dithered loading bar */
+  .progress-bar {
+    width: 300px;
+    height: 8px;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        #fff 0px, #fff 2px,
+        #000 2px, #000 4px
+      );
+    margin: 2rem auto;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #fff;
+    transition: width 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <h1>GHOST HUNT</h1>
+  <div class="room-code" id="room-display"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <div class="status" id="status">Loading...</div>
+  <div class="transport" id="transport"></div>
+</div>
+
+<canvas id="unity-canvas" tabindex="-1"></canvas>
+
+<script>
+  // Extract room code from URL
+  const params = new URLSearchParams(window.location.search);
+  const roomCode = params.get('room') || '';
+
+  if (roomCode) {
+    document.getElementById('room-display').textContent = roomCode.toUpperCase();
+    document.title = `Ghost Hunt — Room ${roomCode.toUpperCase()}`;
+  }
+
+  // Detect WebTransport support
+  const hasWebTransport = typeof WebTransport !== 'undefined';
+  const transportEl = document.getElementById('transport');
+  if (hasWebTransport) {
+    transportEl.textContent = 'WebTransport available';
+    transportEl.className = 'transport webtransport';
+  } else {
+    transportEl.textContent = 'WebSocket fallback (higher latency)';
+    transportEl.className = 'transport websocket';
+  }
+
+  // Unity WebGL loader
+  var buildUrl = "Build";
+  var loaderUrl = buildUrl + "/GhostHunt.loader.js";
+  var config = {
+    dataUrl: buildUrl + "/GhostHunt.data",
+    frameworkUrl: buildUrl + "/GhostHunt.framework.js",
+    codeUrl: buildUrl + "/GhostHunt.wasm",
+    streamingAssetsUrl: "StreamingAssets",
+    companyName: "GhostHunt",
+    productName: "Ghost Hunt",
+    productVersion: "0.1.0"
+  };
+
+  var script = document.createElement("script");
+  script.src = loaderUrl;
+  script.onload = () => {
+    createUnityInstance(
+      document.querySelector("#unity-canvas"),
+      config,
+      (progress) => {
+        document.getElementById('progress').style.width = (progress * 100) + '%';
+        document.getElementById('status').textContent =
+          progress < 1 ? `Loading ${Math.round(progress * 100)}%` : 'Starting...';
+      }
+    ).then((instance) => {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('unity-canvas').style.display = 'block';
+    }).catch((err) => {
+      document.getElementById('status').textContent = 'Failed to load: ' + err.message;
+    });
+  };
+  document.body.appendChild(script);
+</script>
+
+</body>
+</html>

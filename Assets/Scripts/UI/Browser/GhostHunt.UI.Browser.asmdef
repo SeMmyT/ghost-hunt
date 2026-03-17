@@ -1,0 +1,19 @@
+{
+    "name": "GhostHunt.UI.Browser",
+    "rootNamespace": "GhostHunt.UI.Browser",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Network",
+        "GhostHunt.Network.Transport",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

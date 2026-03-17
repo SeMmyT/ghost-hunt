@@ -1,0 +1,16 @@
+{
+  "name": "ghost-hunt-edge-proxy",
+  "version": "0.1.0",
+  "description": "WebTransport → UDP bridge for Ghost Hunt browser clients",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --inspect server.js"
+  },
+  "dependencies": {
+    "@aspect-build/http2-transport": "^0.2.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

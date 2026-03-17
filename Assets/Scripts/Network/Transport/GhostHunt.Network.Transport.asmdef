@@ -1,0 +1,14 @@
+{
+    "name": "GhostHunt.Network.Transport",
+    "rootNamespace": "GhostHunt.Network.Transport",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
