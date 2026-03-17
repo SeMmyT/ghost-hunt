@@ -1,6 +1,8 @@
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace GhostHunt.Editor
 {
@@ -105,6 +107,43 @@ namespace GhostHunt.Editor
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.IL2CPP);
 
             Debug.Log("[Setup] Player settings configured");
+        }
+    }
+
+    /// <summary>
+    /// Creates the GameBootstrap scene with minimal setup.
+    /// The GameBootstrap.cs script handles all runtime object creation,
+    /// so the scene itself just needs to exist.
+    /// </summary>
+    public static class BootstrapSceneCreator
+    {
+        [MenuItem("GhostHunt/Create Bootstrap Scene")]
+        public static void CreateBootstrapScene()
+        {
+            // Create new empty scene
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // Save it
+            string path = "Assets/Scenes/GameBootstrap.unity";
+            System.IO.Directory.CreateDirectory("Assets/Scenes");
+            EditorSceneManager.SaveScene(scene, path);
+
+            // Add to build settings
+            var buildScenes = EditorBuildSettings.scenes;
+            bool alreadyAdded = false;
+            foreach (var s in buildScenes)
+            {
+                if (s.path == path) { alreadyAdded = true; break; }
+            }
+            if (!alreadyAdded)
+            {
+                var newScenes = new EditorBuildSettingsScene[buildScenes.Length + 1];
+                newScenes[0] = new EditorBuildSettingsScene(path, true);
+                System.Array.Copy(buildScenes, 0, newScenes, 1, buildScenes.Length);
+                EditorBuildSettings.scenes = newScenes;
+            }
+
+            Debug.Log($"[GhostHunt] Bootstrap scene created at {path}. Press Play — GameBootstrap auto-wires everything.");
         }
     }
 

@@ -1,0 +1,23 @@
+{
+    "name": "GhostHunt.Bootstrap",
+    "rootNamespace": "GhostHunt.Bootstrap",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Network",
+        "GhostHunt.Maze",
+        "GhostHunt.Player",
+        "GhostHunt.Input",
+        "GhostHunt.Comfort",
+        "Fusion.Runtime",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
