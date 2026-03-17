@@ -72,28 +72,95 @@ namespace GhostHunt.Network
 
         private void ProcessEvent(PendingEvent evt)
         {
+            var nm = NetworkManager.Instance;
+            var game = nm?.Game;
+
             switch (evt.Type)
             {
                 case GameEvent.Teleport:
-                    Debug.Log($"[EventResolver] Teleport by {evt.Source}");
-                    // TODO: Move player to portal exit, update position authority
+                    ProcessTeleport(evt, nm);
                     break;
 
                 case GameEvent.Collectible:
-                    Debug.Log($"[EventResolver] Collectible {evt.TargetEntityId} picked up by {evt.Source}");
-                    // TODO: Remove collectible, update score, check power pellet
+                    ProcessCollectible(evt, game);
                     break;
 
                 case GameEvent.Catch:
-                    Debug.Log($"[EventResolver] Catch! {evt.Source} caught target");
-                    // TODO: End round or respawn target, award points
+                    ProcessCatch(evt, game, nm);
                     break;
 
                 case GameEvent.RoleSwap:
-                    Debug.Log($"[EventResolver] Role swap triggered by {evt.Source}");
-                    // TODO: Enter/exit frightened mode
+                    ProcessRoleSwap(evt, game, nm);
                     break;
             }
+        }
+
+        private void ProcessTeleport(PendingEvent evt, NetworkManager nm)
+        {
+            var portal = FindFirstObjectByType<PortalSystem>();
+            if (portal == null || nm == null) return;
+
+            // Find player position via NetworkBehaviour scan
+            Vector3 playerPos = Vector3.zero;
+            foreach (var nb in FindObjectsByType<NetworkBehaviour>(FindObjectsSortMode.None))
+            {
+                if (nb.Object != null && nb.Object.InputAuthority == evt.Source)
+                {
+                    playerPos = nb.transform.position;
+                    break;
+                }
+            }
+
+            var dest = portal.GetTeleportDestination(evt.TargetEntityId, playerPos);
+            nm.TeleportPlayer(evt.Source, dest);
+            Debug.Log($"[EventResolver] Teleport: {evt.Source} → {dest}");
+        }
+
+        private void ProcessCollectible(PendingEvent evt, GameManager game)
+        {
+            if (game == null) return;
+
+            var state = game.State;
+            state.CollectiblesRemaining--;
+            state.TargetScore += 10;
+            game.State = state;
+
+            // Check if this was a power pellet
+            if (evt.TargetEntityId < 0)
+            {
+                // Regular collectible
+                Debug.Log($"[EventResolver] Collectible picked up by {evt.Source}. {state.CollectiblesRemaining} remaining");
+            }
+        }
+
+        private void ProcessCatch(PendingEvent evt, GameManager game, NetworkManager nm)
+        {
+            if (game == null) return;
+
+            var state = game.State;
+            if (state.IsPowerPelletActive)
+            {
+                // Frightened mode — target eats ghost
+                game.OnGhostEaten(evt.Source);
+                nm?.RespawnGhost(evt.Source);
+                Debug.Log($"[EventResolver] Ghost {evt.Source} eaten during power pellet!");
+            }
+            else
+            {
+                // Normal mode — ghost catches target
+                game.OnTargetCaught(evt.Source);
+                Debug.Log($"[EventResolver] Target caught by {evt.Source}!");
+            }
+        }
+
+        private void ProcessRoleSwap(PendingEvent evt, GameManager game, NetworkManager nm)
+        {
+            if (game == null) return;
+
+            // Power pellet collected — activate frightened mode
+            game.ActivatePowerPellet();
+            nm?.SetGhostWailStates();
+            Debug.Log($"[EventResolver] Power pellet! Ghosts enter wail state.");
         }
     }
 }

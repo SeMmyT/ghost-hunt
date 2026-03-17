@@ -9,7 +9,7 @@ namespace GhostHunt.Player
     /// Cross-platform player controller. Handles movement for all device types.
     /// Client-authoritative for own position — host validates catches via server hitbox.
     /// </summary>
-    public class PlayerController : NetworkBehaviour
+    public class PlayerController : NetworkBehaviour, IPlayerStateAccess
     {
         [Networked] public PlayerState State { get; set; }
         [Networked] public RoleData Role { get; set; }
@@ -91,6 +91,43 @@ namespace GhostHunt.Player
         private void OnDestroy()
         {
             _inputProvider?.Dispose();
+        }
+
+        // --- IPlayerStateAccess ---
+
+        public PlayerRole GetRole() => State.Role;
+        public bool GetIsAlive() => State.IsAlive;
+        public bool GetIsInWailState() => State.IsInWailState;
+        public float GetMoveSpeed() => State.MoveSpeed;
+
+        public void SetAlive(bool alive)
+        {
+            var s = State; s.IsAlive = alive; State = s;
+        }
+
+        public void SetWailState(bool wailing, float speed)
+        {
+            var s = State;
+            s.IsInWailState = wailing;
+            s.MoveSpeed = speed;
+            State = s;
+        }
+
+        public void SetRespawnTimer(float seconds)
+        {
+            var s = State;
+            s.RespawnTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+            State = s;
+        }
+
+        public bool IsRespawnExpired() => State.RespawnTimer.Expired(Runner);
+
+        public void SetPosition(float x, float y, float z)
+        {
+            transform.position = new Vector3(x, y, z);
+            var s = State;
+            s.Position = new Vector3Net(x, y, z);
+            State = s;
         }
 
         private static PlatformType DetectPlatform()

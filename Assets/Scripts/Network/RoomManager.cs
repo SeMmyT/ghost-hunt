@@ -1,9 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
-using UnityEngine;
 using GhostHunt.Core;
+using UnityEngine;
 
 namespace GhostHunt.Network
 {
@@ -100,14 +101,40 @@ namespace GhostHunt.Network
             if (runner.IsServer)
             {
                 // Host spawns player object for the joining client
-                var obj = runner.Spawn(_playerPrefab, Vector3.zero, Quaternion.identity, player);
+                var spawnPos = Vector3.zero;
+                var nm = NetworkManager.Instance;
+                if (nm != null && nm.CurrentMaze != null)
+                    spawnPos = nm.GetTargetSpawnPosition(); // Temporary — LobbyManager assigns role later
+
+                var obj = runner.Spawn(_playerPrefab, spawnPos, Quaternion.identity, player);
                 Debug.Log($"[GhostHunt] Player {player} joined. Spawned network object.");
+
+                // Register with lobby
+                var lobby = nm?.Lobby;
+                if (lobby != null)
+                {
+                    string name = $"Player_{player.RawEncoded}";
+                    lobby.AddPlayer(player, PlatformType.PC, name);
+                }
             }
         }
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
         {
             Debug.Log($"[GhostHunt] Player {player} left.");
+
+            // Clean up: despawn their network object
+            if (runner.IsServer)
+            {
+                foreach (var nb in FindObjectsByType<NetworkBehaviour>(FindObjectsSortMode.None))
+                {
+                    if (nb.Object != null && nb.Object.InputAuthority == player)
+                    {
+                        runner.Despawn(nb.Object);
+                        break;
+                    }
+                }
+            }
         }
 
         public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)

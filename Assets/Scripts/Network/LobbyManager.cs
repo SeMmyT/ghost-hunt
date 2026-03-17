@@ -208,8 +208,13 @@ namespace GhostHunt.Network
 
             if (CountdownTimer.Expired(Runner))
             {
+                AllReady = false;
+                CountdownTimer = default;
                 Debug.Log("[Lobby] Countdown complete — starting game!");
-                // TODO: Transition to Hunt phase via GameManager
+
+                var nm = NetworkManager.Instance;
+                if (nm != null)
+                    nm.StartGame();
             }
         }
 

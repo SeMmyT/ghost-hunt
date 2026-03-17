@@ -136,14 +136,35 @@ namespace GhostHunt.Network
                 State = state;
                 Debug.Log("[GameManager] Power pellet expired. Back to hunt.");
 
-                // TODO: Reset all ghost wail states
+                NetworkManager.Instance?.ResetGhostWailStates();
             }
         }
 
+        [Networked] private TickTimer ScoreScreenTimer { get; set; }
+
         private void UpdateRoundEnd()
         {
-            // Show score screen for a few seconds, then return to lobby
-            // TODO: TickTimer for score screen duration → back to lobby
+            // Start score screen timer on first entry
+            if (!ScoreScreenTimer.ExpiredOrNotRunning(Runner))
+            {
+                if (ScoreScreenTimer.Expired(Runner))
+                {
+                    // Return to lobby
+                    var state = State;
+                    state.Phase = GamePhase.Lobby;
+                    State = state;
+                    ScoreScreenTimer = default;
+                    Debug.Log("[GameManager] Score screen done — back to lobby");
+                }
+                return;
+            }
+
+            // First frame of RoundEnd — start timer and transition to score screen
+            var s = State;
+            s.Phase = GamePhase.ScoreScreen;
+            State = s;
+            ScoreScreenTimer = TickTimer.CreateFromSeconds(Runner, 8f);
+            Debug.Log($"[GameManager] Round over! Ghosts: {s.GhostScore} | Target: {s.TargetScore}");
         }
 
         /// <summary>
@@ -160,7 +181,7 @@ namespace GhostHunt.Network
             State = state;
 
             Debug.Log("[GameManager] POWER PELLET! Ghosts enter wail state!");
-            // TODO: Set all ghost players to wail state
+            NetworkManager.Instance?.SetGhostWailStates();
         }
 
         /// <summary>
@@ -190,7 +211,7 @@ namespace GhostHunt.Network
             State = state;
 
             Debug.Log($"[GameManager] Ghost {ghost} eaten! Target scores 200.");
-            // TODO: Respawn ghost after delay
+            NetworkManager.Instance?.RespawnGhost(ghost);
         }
 
         private void SpawnBotIfNeeded()
