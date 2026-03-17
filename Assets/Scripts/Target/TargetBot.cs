@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Fusion;
 using GhostHunt.Core;
+using GhostHunt.Network;
 using UnityEngine;
 
 namespace GhostHunt.Target

@@ -1,6 +1,7 @@
 using Fusion;
 using GhostHunt.Core;
 using GhostHunt.Network;
+using GhostHunt.Player;
 using UnityEngine;
 
 namespace GhostHunt.Target

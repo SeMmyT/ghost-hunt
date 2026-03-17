@@ -2,9 +2,7 @@
     "name": "GhostHunt.Maze",
     "rootNamespace": "GhostHunt.Maze",
     "references": [
-        "GhostHunt.Core",
-        "GhostHunt.Network",
-        "Fusion.Runtime"
+        "GhostHunt.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

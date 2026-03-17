@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using GhostHunt.Core;
 using GhostHunt.Network;
+using GhostHunt.Player;
 using UnityEngine;
 using UnityEngine.UI;
 

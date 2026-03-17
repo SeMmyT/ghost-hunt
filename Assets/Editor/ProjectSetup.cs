@@ -114,9 +114,11 @@ namespace GhostHunt.Editor
     public class MazePreviewWindow : EditorWindow
     {
         private int _seed;
-        private int _width = 28;
-        private int _height = 31;
+        private int _inputWidth = 29;
+        private int _inputHeight = 31;
         private int[,] _grid;
+        private int _gridWidth;
+        private int _gridHeight;
         private float _cellDrawSize = 8f;
 
         [MenuItem("GhostHunt/Maze Preview")]
@@ -130,14 +132,16 @@ namespace GhostHunt.Editor
             GUILayout.Label("Maze Generator Preview", EditorStyles.boldLabel);
 
             _seed = EditorGUILayout.IntField("Seed (0=random)", _seed);
-            _width = EditorGUILayout.IntSlider("Width", _width, 10, 40);
-            _height = EditorGUILayout.IntSlider("Height", _height, 10, 40);
+            _inputWidth = EditorGUILayout.IntSlider("Width", _inputWidth, 10, 40);
+            _inputHeight = EditorGUILayout.IntSlider("Height", _inputHeight, 10, 40);
             _cellDrawSize = EditorGUILayout.Slider("Cell Size", _cellDrawSize, 4f, 16f);
 
             if (GUILayout.Button("Generate"))
             {
-                var gen = new Maze.MazeGenerator(_width, _height, _seed);
+                var gen = new Maze.MazeGenerator(_inputWidth, _inputHeight, _seed);
                 _grid = gen.Generate();
+                _gridWidth = gen.Width;
+                _gridHeight = gen.Height;
                 Repaint();
             }
 
@@ -145,17 +149,17 @@ namespace GhostHunt.Editor
 
             // Draw maze
             var rect = GUILayoutUtility.GetRect(
-                _width * _cellDrawSize,
-                _height * _cellDrawSize
+                _gridWidth * _cellDrawSize,
+                _gridHeight * _cellDrawSize
             );
 
-            for (int x = 0; x < _width; x++)
+            for (int x = 0; x < _gridWidth; x++)
             {
-                for (int y = 0; y < _height; y++)
+                for (int y = 0; y < _gridHeight; y++)
                 {
                     var cellRect = new Rect(
                         rect.x + x * _cellDrawSize,
-                        rect.y + (_height - 1 - y) * _cellDrawSize,
+                        rect.y + (_gridHeight - 1 - y) * _cellDrawSize,
                         _cellDrawSize - 1,
                         _cellDrawSize - 1
                     );

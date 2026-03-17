@@ -1,7 +1,6 @@
 using Fusion;
 using GhostHunt.Core;
 using GhostHunt.Maze;
-using GhostHunt.Target;
 using UnityEngine;
 
 namespace GhostHunt.Network
@@ -67,13 +66,13 @@ namespace GhostHunt.Network
 
             // Generate maze
             int seed = Random.Range(1, 999999);
-            _mazeGenerator = new MazeGenerator(28, 31, seed);
+            _mazeGenerator = new MazeGenerator(29, 31, seed);
             var grid = _mazeGenerator.Generate();
 
             // Count collectibles
             int collectibles = 0;
-            for (int x = 0; x < 28; x++)
-                for (int y = 0; y < 31; y++)
+            for (int x = 0; x < _mazeGenerator.Width; x++)
+                for (int y = 0; y < _mazeGenerator.Height; y++)
                     if (grid[x, y] == MazeGenerator.Collectible || grid[x, y] == MazeGenerator.PowerPellet)
                         collectibles++;
 
@@ -208,16 +207,18 @@ namespace GhostHunt.Network
 
             if (!hasHumanTarget)
             {
-                // Spawn bot at target spawn
-                var spawnPos = _mazeGenerator.GridToWorld(14, 29); // Bottom center
+                // Spawn bot at target spawn (bottom center of maze)
+                int cx = _mazeGenerator.Width / 2;
+                var spawnPos = _mazeGenerator.GridToWorld(cx, _mazeGenerator.Height - 2);
                 _targetBot = Runner.Spawn(_targetBotPrefab, spawnPos, Quaternion.identity);
 
-                // Scale difficulty based on ghost count
+                // Scale difficulty based on ghost count — uses SendMessage to avoid
+                // circular assembly dependency (Network cannot reference Target)
                 int ghostCount = _lobbyManager.Players.Count;
-                var bot = _targetBot.GetComponent<TargetBot>();
-                bot?.SetDifficulty(Mathf.Clamp(ghostCount + 1, 1, 8));
+                int difficulty = Mathf.Clamp(ghostCount + 1, 1, 8);
+                _targetBot.SendMessage("SetDifficulty", difficulty, SendMessageOptions.DontRequireReceiver);
 
-                Debug.Log($"[GameManager] Bot target spawned. Difficulty: {ghostCount + 1}");
+                Debug.Log($"[GameManager] Bot target spawned. Difficulty: {difficulty}");
             }
         }
     }

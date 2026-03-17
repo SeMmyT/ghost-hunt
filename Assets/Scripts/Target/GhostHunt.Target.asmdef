@@ -4,6 +4,7 @@
     "references": [
         "GhostHunt.Core",
         "GhostHunt.Network",
+        "GhostHunt.Player",
         "Fusion.Runtime"
     ],
     "includePlatforms": [],

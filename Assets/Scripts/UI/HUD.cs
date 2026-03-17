@@ -1,5 +1,6 @@
 using GhostHunt.Core;
 using GhostHunt.Network;
+using GhostHunt.Player;
 using UnityEngine;
 using TMPro;
 

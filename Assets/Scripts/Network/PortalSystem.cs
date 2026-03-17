@@ -1,9 +1,9 @@
 using Fusion;
 using GhostHunt.Core;
-using GhostHunt.Network;
+using GhostHunt.Maze;
 using UnityEngine;
 
-namespace GhostHunt.Maze
+namespace GhostHunt.Network
 {
     /// <summary>
     /// Handles portal/tunnel teleportation.
