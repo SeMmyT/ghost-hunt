@@ -46,7 +46,7 @@ jobs:
           targetPlatform: Android
           buildName: GhostHunt
           unityVersion: auto
-          androidAppBundle: false
+          androidExportType: androidPackage
           androidKeystoreName: ghost-hunt.keystore
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
