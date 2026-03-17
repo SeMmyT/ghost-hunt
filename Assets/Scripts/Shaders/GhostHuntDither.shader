@@ -53,24 +53,12 @@ Shader "GhostHunt/DitherPostProcess"
             float _Brightness;
             float _Contrast;
 
-            struct VaryingsCustom
+            // Use Blit.hlsl's built-in Vert and Varyings — no custom vertex shader needed
+            float4 Frag(Varyings input) : SV_Target
             {
-                float4 positionCS : SV_POSITION;
-                float2 texcoord : TEXCOORD0;
-            };
-
-            VaryingsCustom Vert(Attributes input)
-            {
-                VaryingsCustom output;
-                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
-                output.texcoord = GetFullScreenTriangleTexCoord(input.vertexID);
-                return output;
-            }
-
-            float4 Frag(VaryingsCustom input) : SV_Target
-            {
-                // Sample scene
-                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+                // Sample scene using Blit.hlsl's texture and sampler
+                float2 uv = input.texcoord;
+                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv);
 
                 // To luminance (Rec. 709)
                 float lum = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
@@ -78,7 +66,7 @@ Shader "GhostHunt/DitherPostProcess"
                 // Apply brightness/contrast
                 lum = saturate((lum + _Brightness) * _Contrast);
 
-                // Dither coordinates — scale screen position
+                // Dither coordinates from screen position
                 float2 ditherCoord = input.positionCS.xy;
 
                 // Bayer lookup
