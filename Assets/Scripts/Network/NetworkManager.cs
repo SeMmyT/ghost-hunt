@@ -52,12 +52,20 @@ namespace GhostHunt.Network
         {
             Room.OnRoomCreated += OnRoomReady;
             Room.OnRoomJoined += OnRoomReady;
+            MazeManager.OnCollectiblePickedUp += HandleCollectiblePickup;
+            MazeManager.OnPowerPelletPickedUp += HandlePowerPelletPickup;
+            MazeManager.OnPortalEntered += HandlePortalEnter;
+            MazeManager.OnCatchAttempt += HandleCatchAttempt;
         }
 
         private void OnDisable()
         {
             Room.OnRoomCreated -= OnRoomReady;
             Room.OnRoomJoined -= OnRoomReady;
+            MazeManager.OnCollectiblePickedUp -= HandleCollectiblePickup;
+            MazeManager.OnPowerPelletPickedUp -= HandlePowerPelletPickup;
+            MazeManager.OnPortalEntered -= HandlePortalEnter;
+            MazeManager.OnCatchAttempt -= HandleCatchAttempt;
         }
 
         private void OnRoomReady(string code) => OnRoomReady();
@@ -101,6 +109,14 @@ namespace GhostHunt.Network
 
             if (_mazeRenderer != null)
                 _mazeRenderer.BuildMaze(_currentGrid, _currentMaze.Width, _currentMaze.Height);
+
+            // Initialize runtime gameplay (triggers, colliders, AOI)
+            var mazeManager = _mazeRenderer != null
+                ? _mazeRenderer.GetComponent<MazeManager>()
+                : null;
+            if (mazeManager == null)
+                mazeManager = FindFirstObjectByType<MazeManager>();
+            mazeManager?.InitializeRuntime(_currentMaze, _currentGrid);
 
             Debug.Log($"[NetworkManager] Maze built — seed {seed}");
         }
@@ -208,6 +224,54 @@ namespace GhostHunt.Network
                     Debug.Log($"[NetworkManager] Ghost {psa.GetRole()} respawned");
                 }
             }
+        }
+
+        // --- Maze event handlers (bridge Maze → Network) ---
+
+        private PlayerRef FindPlayerRef(GameObject playerGO)
+        {
+            if (playerGO == null) return default;
+            var nb = playerGO.GetComponent<NetworkBehaviour>();
+            if (nb?.Object != null)
+                return nb.Object.InputAuthority;
+            // Check parent (player GO might be a child collider)
+            nb = playerGO.GetComponentInParent<NetworkBehaviour>();
+            if (nb?.Object != null)
+                return nb.Object.InputAuthority;
+            return default;
+        }
+
+        private void HandleCollectiblePickup(int entityId, GameObject playerGO)
+        {
+            if (!Runner.IsServer) return;
+            var playerRef = FindPlayerRef(playerGO);
+            Events?.QueueEvent(GameEvent.Collectible, playerRef, entityId);
+
+            // Remove the collectible visually
+            MazeManager.Instance?.RemoveCollectible(entityId);
+        }
+
+        private void HandlePowerPelletPickup(int entityId, GameObject playerGO)
+        {
+            if (!Runner.IsServer) return;
+            var playerRef = FindPlayerRef(playerGO);
+            Events?.QueueEvent(GameEvent.RoleSwap, playerRef, entityId);
+
+            MazeManager.Instance?.RemoveCollectible(entityId);
+        }
+
+        private void HandlePortalEnter(int portalId, GameObject playerGO)
+        {
+            if (!Runner.IsServer) return;
+            var playerRef = FindPlayerRef(playerGO);
+            Events?.QueueEvent(GameEvent.Teleport, playerRef, portalId);
+        }
+
+        private void HandleCatchAttempt(GameObject ghostGO, GameObject targetGO)
+        {
+            if (!Runner.IsServer) return;
+            var ghostRef = FindPlayerRef(ghostGO);
+            Events?.QueueEvent(GameEvent.Catch, ghostRef);
         }
 
         public MazeGenerator CurrentMaze => _currentMaze;

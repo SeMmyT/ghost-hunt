@@ -90,14 +90,21 @@ namespace GhostHunt.Maze
             }
             else
             {
-                // Fallback: primitive cube
+                // Fallback: primitive cube (comes with BoxCollider)
                 wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 wall.transform.SetParent(_mazeParent);
             }
 
             wall.transform.position = pos + Vector3.up * (_wallHeight / 2f);
             wall.transform.localScale = new Vector3(_cellSize, _wallHeight, _cellSize);
-            wall.layer = LayerMask.NameToLayer("Wall");
+            wall.isStatic = true;
+
+            int wallLayer = LayerMask.NameToLayer("Wall");
+            wall.layer = wallLayer >= 0 ? wallLayer : 0;
+
+            // Ensure collider exists (prefab might not have one)
+            if (wall.GetComponent<Collider>() == null)
+                wall.AddComponent<BoxCollider>();
         }
 
         private void SpawnFloor(Vector3 pos)
