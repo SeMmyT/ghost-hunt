@@ -1,0 +1,179 @@
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace GhostHunt.Editor
+{
+    /// <summary>
+    /// Auto-configures the project on first open.
+    /// Sets up layers, tags, quality settings, and build profiles.
+    /// Run via menu: GhostHunt → Setup Project
+    /// </summary>
+    public static class ProjectSetup
+    {
+        [MenuItem("GhostHunt/Setup Project")]
+        public static void Setup()
+        {
+            SetupLayers();
+            SetupTags();
+            SetupQuality();
+            SetupPlayerSettings();
+            Debug.Log("[GhostHunt] Project setup complete! Next: import Photon Fusion 2 SDK.");
+        }
+
+        private static void SetupLayers()
+        {
+            var tagManager = new SerializedObject(
+                AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            var layers = tagManager.FindProperty("layers");
+
+            SetLayer(layers, 6, "Wall");
+            SetLayer(layers, 7, "Collectible");
+            SetLayer(layers, 8, "Ghost");
+            SetLayer(layers, 9, "Target");
+            SetLayer(layers, 10, "Portal");
+            SetLayer(layers, 11, "Radar");
+
+            tagManager.ApplyModifiedProperties();
+            Debug.Log("[Setup] Layers configured");
+        }
+
+        private static void SetLayer(SerializedProperty layers, int index, string name)
+        {
+            var layer = layers.GetArrayElementAtIndex(index);
+            if (string.IsNullOrEmpty(layer.stringValue))
+                layer.stringValue = name;
+        }
+
+        private static void SetupTags()
+        {
+            var tagManager = new SerializedObject(
+                AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            var tags = tagManager.FindProperty("tags");
+
+            AddTag(tags, "Collectible");
+            AddTag(tags, "PowerPellet");
+            AddTag(tags, "Portal");
+            AddTag(tags, "GhostSpawn");
+            AddTag(tags, "TargetSpawn");
+            AddTag(tags, "Decoy");
+
+            tagManager.ApplyModifiedProperties();
+            Debug.Log("[Setup] Tags configured");
+        }
+
+        private static void AddTag(SerializedProperty tags, string tagName)
+        {
+            for (int i = 0; i < tags.arraySize; i++)
+            {
+                if (tags.GetArrayElementAtIndex(i).stringValue == tagName)
+                    return; // Already exists
+            }
+
+            tags.InsertArrayElementAtIndex(tags.arraySize);
+            tags.GetArrayElementAtIndex(tags.arraySize - 1).stringValue = tagName;
+        }
+
+        private static void SetupQuality()
+        {
+            // Quest 1 floor: minimize quality for performance
+            // The dither shader does all visual work — we don't need fancy rendering
+            QualitySettings.shadows = ShadowQuality.Disable; // No shadows in 1-bit world
+            QualitySettings.vSyncCount = 0; // VR handles its own vsync
+            QualitySettings.antiAliasing = 0; // Dithering IS the anti-aliasing
+            QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
+
+            Debug.Log("[Setup] Quality settings configured for Quest 1 floor");
+        }
+
+        private static void SetupPlayerSettings()
+        {
+            // Company and product
+            PlayerSettings.companyName = "GhostHunt";
+            PlayerSettings.productName = "Ghost Hunt";
+
+            // Use new Input System
+            PlayerSettings.SetActiveInputHandler(PlayerSettings.ActiveInputHandler.Both);
+
+            // Android / Quest settings
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+
+            // Standalone / PC
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.IL2CPP);
+
+            Debug.Log("[Setup] Player settings configured");
+        }
+    }
+
+    /// <summary>
+    /// Editor tool: preview maze generation without entering play mode.
+    /// </summary>
+    public class MazePreviewWindow : EditorWindow
+    {
+        private int _seed;
+        private int _width = 28;
+        private int _height = 31;
+        private int[,] _grid;
+        private float _cellDrawSize = 8f;
+
+        [MenuItem("GhostHunt/Maze Preview")]
+        public static void ShowWindow()
+        {
+            GetWindow<MazePreviewWindow>("Maze Preview");
+        }
+
+        private void OnGUI()
+        {
+            GUILayout.Label("Maze Generator Preview", EditorStyles.boldLabel);
+
+            _seed = EditorGUILayout.IntField("Seed (0=random)", _seed);
+            _width = EditorGUILayout.IntSlider("Width", _width, 10, 40);
+            _height = EditorGUILayout.IntSlider("Height", _height, 10, 40);
+            _cellDrawSize = EditorGUILayout.Slider("Cell Size", _cellDrawSize, 4f, 16f);
+
+            if (GUILayout.Button("Generate"))
+            {
+                var gen = new Maze.MazeGenerator(_width, _height, _seed);
+                _grid = gen.Generate();
+                Repaint();
+            }
+
+            if (_grid == null) return;
+
+            // Draw maze
+            var rect = GUILayoutUtility.GetRect(
+                _width * _cellDrawSize,
+                _height * _cellDrawSize
+            );
+
+            for (int x = 0; x < _width; x++)
+            {
+                for (int y = 0; y < _height; y++)
+                {
+                    var cellRect = new Rect(
+                        rect.x + x * _cellDrawSize,
+                        rect.y + (_height - 1 - y) * _cellDrawSize,
+                        _cellDrawSize - 1,
+                        _cellDrawSize - 1
+                    );
+
+                    Color color = _grid[x, y] switch
+                    {
+                        Maze.MazeGenerator.Wall => Color.black,
+                        Maze.MazeGenerator.Collectible => new Color(0.9f, 0.9f, 0.8f),
+                        Maze.MazeGenerator.PowerPellet => Color.white,
+                        Maze.MazeGenerator.GhostSpawn => new Color(0.3f, 0.3f, 0.8f),
+                        Maze.MazeGenerator.TargetSpawn => new Color(0.8f, 0.8f, 0.2f),
+                        Maze.MazeGenerator.Portal => new Color(0.8f, 0.2f, 0.8f),
+                        _ => new Color(0.5f, 0.5f, 0.5f)
+                    };
+
+                    EditorGUI.DrawRect(cellRect, color);
+                }
+            }
+        }
+    }
+}

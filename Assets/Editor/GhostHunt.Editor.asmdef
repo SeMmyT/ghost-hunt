@@ -1,0 +1,17 @@
+{
+    "name": "GhostHunt.Editor",
+    "rootNamespace": "GhostHunt.Editor",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Maze"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

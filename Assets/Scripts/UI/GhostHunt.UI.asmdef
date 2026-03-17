@@ -1,0 +1,21 @@
+{
+    "name": "GhostHunt.UI",
+    "rootNamespace": "GhostHunt.UI",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Network",
+        "GhostHunt.Player",
+        "Fusion.Runtime",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

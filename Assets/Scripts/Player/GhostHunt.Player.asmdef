@@ -1,0 +1,21 @@
+{
+    "name": "GhostHunt.Player",
+    "rootNamespace": "GhostHunt.Player",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Network",
+        "Fusion.Runtime",
+        "Unity.XR.Management",
+        "Unity.XR.OpenXR",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

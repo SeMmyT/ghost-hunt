@@ -1,0 +1,19 @@
+{
+    "name": "GhostHunt.Network",
+    "rootNamespace": "GhostHunt.Network",
+    "references": [
+        "GhostHunt.Core",
+        "GhostHunt.Maze",
+        "GhostHunt.Target",
+        "Fusion.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

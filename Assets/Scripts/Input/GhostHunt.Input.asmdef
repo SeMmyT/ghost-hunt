@@ -1,0 +1,19 @@
+{
+    "name": "GhostHunt.Input",
+    "rootNamespace": "GhostHunt.Player",
+    "references": [
+        "GhostHunt.Core",
+        "Unity.InputSystem",
+        "Unity.XR.Management",
+        "Unity.XR.OpenXR"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
