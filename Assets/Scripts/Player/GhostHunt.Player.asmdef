@@ -4,6 +4,7 @@
     "references": [
         "GhostHunt.Core",
         "GhostHunt.Network",
+        "GhostHunt.Input",
         "Fusion.Runtime",
         "Unity.XR.Management",
         "Unity.XR.OpenXR",

@@ -1,158 +1,110 @@
 using GhostHunt.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace GhostHunt.Player
 {
     /// <summary>
-    /// Abstracts input across all platforms.
-    /// Returns normalized movement vectors regardless of device.
-    /// Factory pattern — Create() detects platform and returns the right provider.
+    /// Abstracts input across all platforms using the new Unity Input System.
+    /// Loads bindings from GhostHuntInput.inputactions, auto-switches control
+    /// scheme based on active device. Factory Create() still detects platform
+    /// for camera/HUD decisions, but input routing is unified.
     /// </summary>
-    public abstract class PlatformInputProvider
+    public class PlatformInputProvider
     {
-        public abstract PlatformType Platform { get; }
+        public PlatformType Platform { get; }
+
+        private readonly InputActionAsset _asset;
+        private readonly InputActionMap _playerMap;
+        private readonly InputAction _move;
+        private readonly InputAction _look;
+        private readonly InputAction _action;
+        private readonly InputAction _secondary;
+
+        private PlatformInputProvider(PlatformType platform, InputActionAsset asset)
+        {
+            Platform = platform;
+            _asset = asset;
+            _playerMap = _asset.FindActionMap("Player");
+            _move = _playerMap.FindAction("Move");
+            _look = _playerMap.FindAction("Look");
+            _action = _playerMap.FindAction("Action");
+            _secondary = _playerMap.FindAction("Secondary");
+            _playerMap.Enable();
+        }
 
         /// <summary>
-        /// Get movement input as normalized XZ direction.
+        /// Create provider for the detected platform. Loads the shared
+        /// InputActionAsset and enables the Player action map.
         /// </summary>
-        public abstract Vector2 GetMoveInput();
-
-        /// <summary>
-        /// Get look/turn input. VR uses head tracking; others use stick/mouse.
-        /// </summary>
-        public abstract Vector2 GetLookInput();
-
-        /// <summary>
-        /// Primary action (catch attempt for ghosts, use ability for target).
-        /// </summary>
-        public abstract bool GetActionPressed();
-
-        /// <summary>
-        /// Secondary action (ghost burst, target decoy, etc).
-        /// </summary>
-        public abstract bool GetSecondaryPressed();
-
         public static PlatformInputProvider Create(PlatformType platform)
         {
-            return platform switch
+            var asset = Resources.Load<InputActionAsset>("GhostHuntInput");
+            if (asset == null)
             {
-                PlatformType.VR => new VRInputProvider(),
-                PlatformType.PC => new PCInputProvider(),
-                PlatformType.Mobile => new MobileInputProvider(),
-                PlatformType.Console => new ConsoleInputProvider(),
-                PlatformType.Browser => new MobileInputProvider(), // Browser uses touch-like input
-                _ => new PCInputProvider()
-            };
+                // Fallback: build actions programmatically
+                asset = BuildFallbackActions();
+                Debug.LogWarning("[Input] GhostHuntInput asset not found in Resources, using fallback bindings");
+            }
+
+            // Clone so each player gets independent action state
+            asset = Object.Instantiate(asset);
+            return new PlatformInputProvider(platform, asset);
         }
-    }
 
-    /// <summary>
-    /// VR input via XR controllers. Joystick locomotion + hand tracking.
-    /// </summary>
-    public class VRInputProvider : PlatformInputProvider
-    {
-        public override PlatformType Platform => PlatformType.VR;
+        public Vector2 GetMoveInput() => _move.ReadValue<Vector2>();
+        public Vector2 GetLookInput() => _look.ReadValue<Vector2>();
+        public bool GetActionPressed() => _action.WasPressedThisFrame();
+        public bool GetSecondaryPressed() => _secondary.WasPressedThisFrame();
 
-        public override Vector2 GetMoveInput()
+        /// <summary>
+        /// True while primary action is held (for charge-style abilities).
+        /// </summary>
+        public bool GetActionHeld() => _action.IsPressed();
+
+        public void Dispose()
         {
-            // Unity XR Input System — left thumbstick
-            var leftHand = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.LeftHand);
-            if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primary2DAxis, out Vector2 axis))
-                return axis;
-            return Vector2.zero;
+            _playerMap?.Disable();
+            if (_asset != null)
+                Object.Destroy(_asset);
         }
 
-        public override Vector2 GetLookInput()
+        /// <summary>
+        /// Fallback when the .inputactions asset isn't in Resources.
+        /// Builds keyboard+mouse + gamepad bindings programmatically.
+        /// </summary>
+        private static InputActionAsset BuildFallbackActions()
         {
-            // VR look is head-tracked — no manual input needed
-            // Snap turn handled separately by VRComfortController
-            return Vector2.zero;
+            var asset = InputActionAsset.FromJson(@"{
+                ""name"": ""FallbackInput"",
+                ""maps"": [{
+                    ""name"": ""Player"",
+                    ""id"": ""f0000000-0000-4000-8000-000000000001"",
+                    ""actions"": [
+                        { ""name"": ""Move"",      ""type"": ""Value"",  ""id"": ""f0000001-0000-4000-8000-000000000001"", ""expectedControlType"": ""Vector2"" },
+                        { ""name"": ""Look"",      ""type"": ""Value"",  ""id"": ""f0000001-0000-4000-8000-000000000002"", ""expectedControlType"": ""Vector2"" },
+                        { ""name"": ""Action"",    ""type"": ""Button"", ""id"": ""f0000001-0000-4000-8000-000000000003"" },
+                        { ""name"": ""Secondary"", ""type"": ""Button"", ""id"": ""f0000001-0000-4000-8000-000000000004"" }
+                    ],
+                    ""bindings"": [
+                        { ""name"": ""WASD"", ""id"": ""f0000002-0001-4000-8000-000000000001"", ""path"": """", ""action"": ""Move"", ""isComposite"": true },
+                        { ""name"": ""up"",    ""id"": ""f0000002-0001-4000-8000-000000000002"", ""path"": ""<Keyboard>/w"",     ""action"": ""Move"", ""isPartOfComposite"": true },
+                        { ""name"": ""down"",  ""id"": ""f0000002-0001-4000-8000-000000000003"", ""path"": ""<Keyboard>/s"",     ""action"": ""Move"", ""isPartOfComposite"": true },
+                        { ""name"": ""left"",  ""id"": ""f0000002-0001-4000-8000-000000000004"", ""path"": ""<Keyboard>/a"",     ""action"": ""Move"", ""isPartOfComposite"": true },
+                        { ""name"": ""right"", ""id"": ""f0000002-0001-4000-8000-000000000005"", ""path"": ""<Keyboard>/d"",     ""action"": ""Move"", ""isPartOfComposite"": true },
+                        { ""path"": ""<Gamepad>/leftStick"",   ""id"": ""f0000002-0002-4000-8000-000000000001"", ""action"": ""Move"" },
+                        { ""path"": ""<Mouse>/delta"",         ""id"": ""f0000002-0003-4000-8000-000000000001"", ""action"": ""Look"", ""processors"": ""ScaleVector2(x=0.1,y=0.1)"" },
+                        { ""path"": ""<Gamepad>/rightStick"",  ""id"": ""f0000002-0004-4000-8000-000000000001"", ""action"": ""Look"", ""processors"": ""ScaleVector2(x=3,y=3)"" },
+                        { ""path"": ""<Mouse>/leftButton"",    ""id"": ""f0000002-0005-4000-8000-000000000001"", ""action"": ""Action"" },
+                        { ""path"": ""<Gamepad>/buttonSouth"",  ""id"": ""f0000002-0006-4000-8000-000000000001"", ""action"": ""Action"" },
+                        { ""path"": ""<Mouse>/rightButton"",   ""id"": ""f0000002-0007-4000-8000-000000000001"", ""action"": ""Secondary"" },
+                        { ""path"": ""<Gamepad>/buttonWest"",   ""id"": ""f0000002-0008-4000-8000-000000000001"", ""action"": ""Secondary"" },
+                        { ""path"": ""<Keyboard>/e"",          ""id"": ""f0000002-0009-4000-8000-000000000001"", ""action"": ""Secondary"" }
+                    ]
+                }],
+                ""controlSchemes"": []
+            }");
+            return asset;
         }
-
-        public override bool GetActionPressed()
-        {
-            var rightHand = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.RightHand);
-            if (rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool pressed))
-                return pressed;
-            return false;
-        }
-
-        public override bool GetSecondaryPressed()
-        {
-            var rightHand = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.RightHand);
-            if (rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool pressed))
-                return pressed;
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// PC input via keyboard + mouse.
-    /// </summary>
-    public class PCInputProvider : PlatformInputProvider
-    {
-        public override PlatformType Platform => PlatformType.PC;
-
-        public override Vector2 GetMoveInput()
-        {
-            return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        }
-
-        public override Vector2 GetLookInput()
-        {
-            return new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
-        }
-
-        public override bool GetActionPressed() => Input.GetMouseButtonDown(0);
-        public override bool GetSecondaryPressed() => Input.GetMouseButtonDown(1);
-    }
-
-    /// <summary>
-    /// Mobile/touch input. Virtual joystick + tap actions.
-    /// </summary>
-    public class MobileInputProvider : PlatformInputProvider
-    {
-        public override PlatformType Platform => PlatformType.Mobile;
-
-        public override Vector2 GetMoveInput()
-        {
-            // TODO: Hook up to on-screen virtual joystick UI
-            // For now, fall back to any connected gamepad
-            return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        }
-
-        public override Vector2 GetLookInput() => Vector2.zero; // Top-down view, no look
-
-        public override bool GetActionPressed()
-        {
-            return Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began;
-        }
-
-        public override bool GetSecondaryPressed()
-        {
-            return Input.touchCount > 1 && Input.GetTouch(1).phase == TouchPhase.Began;
-        }
-    }
-
-    /// <summary>
-    /// Console input via gamepad (Switch, Xbox, PS).
-    /// </summary>
-    public class ConsoleInputProvider : PlatformInputProvider
-    {
-        public override PlatformType Platform => PlatformType.Console;
-
-        public override Vector2 GetMoveInput()
-        {
-            return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        }
-
-        public override Vector2 GetLookInput()
-        {
-            // Right stick
-            return new Vector2(Input.GetAxis("RightStickHorizontal"), Input.GetAxis("RightStickVertical"));
-        }
-
-        public override bool GetActionPressed() => Input.GetButtonDown("Fire1");
-        public override bool GetSecondaryPressed() => Input.GetButtonDown("Fire2");
     }
 }

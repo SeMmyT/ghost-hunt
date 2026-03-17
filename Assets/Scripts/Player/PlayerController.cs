@@ -18,6 +18,7 @@ namespace GhostHunt.Player
         [SerializeField] private CharacterController _characterController;
 
         private PlatformInputProvider _inputProvider;
+        private float _yaw;
 
         public override void Spawned()
         {
@@ -42,23 +43,54 @@ namespace GhostHunt.Player
 
         public override void FixedUpdateNetwork()
         {
-            if (!HasInputAuthority) return;
+            if (!HasInputAuthority || _inputProvider == null) return;
 
-            var input = _inputProvider.GetMoveInput();
-            var move = new Vector3(input.x, 0, input.y) * State.MoveSpeed * Runner.DeltaTime;
+            // Movement — relative to current facing on flat platforms, absolute on VR/top-down
+            var moveInput = _inputProvider.GetMoveInput();
+            Vector3 move;
+
+            if (_inputProvider.Platform == PlatformType.VR ||
+                _inputProvider.Platform == PlatformType.Mobile ||
+                _inputProvider.Platform == PlatformType.Browser)
+            {
+                // World-space movement (VR uses head direction, top-down is absolute)
+                move = new Vector3(moveInput.x, 0, moveInput.y);
+            }
+            else
+            {
+                // Camera-relative movement for PC/Console third-person
+                move = transform.forward * moveInput.y + transform.right * moveInput.x;
+                move.y = 0;
+                if (move.sqrMagnitude > 1f) move.Normalize();
+            }
+
+            move *= State.MoveSpeed * Runner.DeltaTime;
 
             if (_characterController != null)
                 _characterController.Move(move);
             else
                 transform.position += move;
 
-            // Update networked position
+            // Look — rotate player on flat platforms (VR uses head tracking)
+            var lookInput = _inputProvider.GetLookInput();
+            if (_inputProvider.Platform != PlatformType.VR && lookInput.sqrMagnitude > 0.001f)
+            {
+                _yaw += lookInput.x;
+                transform.rotation = Quaternion.Euler(0, _yaw, 0);
+            }
+
+            // Sync position to network state
             var state = State;
             state.Position = new Vector3Net(transform.position.x, transform.position.y, transform.position.z);
             state.Rotation = new QuaternionNet(
                 transform.rotation.x, transform.rotation.y,
                 transform.rotation.z, transform.rotation.w);
             State = state;
+        }
+
+        private void OnDestroy()
+        {
+            _inputProvider?.Dispose();
         }
 
         private static PlatformType DetectPlatform()
